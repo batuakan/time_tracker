@@ -1,0 +1,27 @@
+{
+    "jira":{
+        // Jira server
+        "server": "https://jira.atlassian.com",
+        "username": "your username",
+        "api_key": "your api key"
+    },
+    "calendar": "your google calendar id",
+    "tasks": {
+        //This follows google calendar event
+        //https://googleapis.github.io/google-api-python-client/docs/dyn/calendar_v3.events.html
+        "t1": {
+            "summary": "Some boring task ",
+            "description": "Some very boring task that needs time reporting",
+            "extendedProperties": {
+                "private": {
+                    //Jira isse number
+                    "jira": "JIRA-XXX",
+                    //Other project related meta data
+                    "project": "P4-18-4"                    
+                }
+            }
+        }
+
+
+    }
+}
