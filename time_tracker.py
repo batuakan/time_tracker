@@ -69,8 +69,8 @@ class TimeTracker():
 
 
     def start(self, entry):
-        self.entry = self.tasks['tasks'][command]
-        self.entry["start"] =  {
+        self.entry = entry
+        self.entry["start"] = {
                 'dateTime': datetime.now().isoformat(),
                 'timeZone': 'Europe/Stockholm',
             }
@@ -78,11 +78,38 @@ class TimeTracker():
 
     def end(self):
         if self.entry != None:
-            self.entry["end"] =  {
+            self.entry["end"] = {
                 'dateTime': datetime.now().isoformat(),
                 'timeZone': 'Europe/Stockholm',
             }
             self.entry = self.service.events().insert(calendarId=self.tasks["calendar"], body=self.entry).execute()
+
+    def list_open_issues(self):
+        size = 100
+        initial = 0
+        issues_list = []
+        while True:
+            start = initial*size
+            issues = self.jira.search_issues('project=Swetree and assignee = currentUser() and status = "To Do"', start, size)
+            if len(issues) == 0:
+                break
+            initial += 1
+            key = 1
+            for issue in issues:
+                d = {"summary": issue.fields.summary,
+                     "description": issue.fields.description,
+                     "extendedProperties": {
+                        "private": {
+                            "jira": issue.key,
+                            "project": "P4-18-4"
+                            }
+                    }
+
+                }
+
+                print(json.dumps({"task"+str(key): d}, indent=4))
+                key = key + 1
+        pass
 
     def run(self):
         command = None
@@ -94,6 +121,8 @@ class TimeTracker():
             if command == "jira":
                 self.update_jira()
 
+
 if __name__ == '__main__':
     t = TimeTracker()
-    t.run()
+    t.list_open_issues()
+    #t.run()
