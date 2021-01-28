@@ -8,8 +8,12 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from json import dumps
+
+from rich.console import Console
+from rich.table import Table
+from rich import print
 
 class TimeTracker():
     def __init__(self):
@@ -39,13 +43,43 @@ class TimeTracker():
        
         self.entry = None
 
+    def td_format(self, td_object):
+        seconds = int(td_object.total_seconds())
+        periods = [
+            ('y', 60*60*24*365),
+            ('m', 60*60*24*30),
+            ('d', 60*60*24),
+            ('h', 60*60),
+            ('m', 60),
+            ('s', 1)
+        ]
 
+        strings=[]
+        for period_name, period_seconds in periods:
+            if seconds > period_seconds:
+                period_value , seconds = divmod(seconds, period_seconds)
+                strings.append("%s%s" % (period_value, period_name))
 
-    def update_jira(self, command=None):
+        return " ".join(strings)
+
+    def update_jira(self, params=None):
         page_token = None
-        entries = []
+        worklogs = []
+        filter_date = date.today()
+        if len(params) > 0:
+            if params[0] == "today":
+                pass
+            elif params[0] == "yesterday":
+                filter_date = (filter_date + timedelta(days=-1))
+            else:
+                filter_date = datetime.strptime(params[0], '%Y%m%d')
+
+        timeMin = datetime.combine(filter_date, datetime.min.time()).isoformat()+'Z'
+        timeMax = datetime.combine(filter_date, datetime.max.time()).isoformat()+'Z'
+        print(timeMin, timeMax)
+        
         while True:
-            events = self.service.events().list(calendarId=self.tasks["calendar"], pageToken=page_token).execute()
+            events = self.service.events().list(calendarId=self.tasks["calendar"], timeMin=timeMin, timeMax=timeMax, pageToken=page_token).execute()
 
             for event in events['items']:
                 # print(event)
@@ -53,7 +87,7 @@ class TimeTracker():
                     start_datetime = datetime.strptime(event["start"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
                     end_datetime = datetime.strptime(event["end"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
                     span = math.ceil((end_datetime - start_datetime).total_seconds() / 60.0)
-                    entries.append({"issue": event["extendedProperties"]["private"]["jira"], "timeSpent": str(span) + "m", "comment": event["summary"], "started": start_datetime})
+                    worklogs.append({"issue": event["extendedProperties"]["private"]["jira"], "timeSpent": self.td_format(end_datetime - start_datetime), "comment": event["summary"], "started": start_datetime})
                 except:
                     pass
                 #span = event["start"]["datetime"] - event["start"]["datetime"]
@@ -63,10 +97,40 @@ class TimeTracker():
             page_token = events.get('nextPageToken')
             if not page_token:
                 break
-        if entries != []:
-            for entry in entries:
-                print(entry)
+        if worklogs != []:
+            self.list_work_logs(worklogs)
+            s = input(">yes>no>")
+            if s == "yes":
+                for worklog in worklogs:
+                    self.jira.add_worklog(worklog["issue"], comment=worklog["comment"], timeSpent=worklog["timeSpent"], started=worklog["started"])
+                print("The work items have been synched with Jira")
+        else:
+            print("No work has been logged for the requested day")
 
+    def list_work_logs(self, logs):
+        table = Table(title="The following work items will be synched to Jira")
+        table.add_column("Issue", style="cyan", no_wrap=True)
+        table.add_column("Start Time", style="green")
+        table.add_column("Summary", style="magenta")
+        table.add_column("Time Spend", justify="right", style="green")
+        for log in logs:
+            table.add_row(log["issue"], str(log["started"]), log["comment"], log["timeSpent"])
+
+        console = Console()
+        console.print(table, justify="left")
+
+    def list_tasks(self, tasks):
+        table = Table(title="Tasks")
+        table.add_column("Code", style="cyan", no_wrap=True)
+        table.add_column("Summary", style="magenta")
+        table.add_column("Project", style="green")
+        for key in tasks.keys():
+            try:
+                table.add_row(key, tasks[key]["summary"], tasks[key]["extendedProperties"]["private"]["project"])
+            except:
+                pass
+        console = Console()
+        console.print(table, justify="left")
 
     def start(self, entry):
         self.entry = entry
@@ -74,7 +138,11 @@ class TimeTracker():
                 'dateTime': datetime.now().isoformat(),
                 'timeZone': 'Europe/Stockholm',
             }
-        pass
+        self.entry["end"] = {
+                'dateTime': (datetime.now() + timedelta(minutes=30)).isoformat(),
+                'timeZone': 'Europe/Stockholm',
+            }
+        self.entry = self.service.events().insert(calendarId=self.tasks["calendar"], body=self.entry).execute()
 
     def end(self):
         if self.entry != None:
@@ -82,12 +150,13 @@ class TimeTracker():
                 'dateTime': datetime.now().isoformat(),
                 'timeZone': 'Europe/Stockholm',
             }
-            self.entry = self.service.events().insert(calendarId=self.tasks["calendar"], body=self.entry).execute()
+            self.service.events().update(calendarId=self.tasks["calendar"], eventId=self.entry['id'], body=self.entry).execute()
+            self.entry = None
 
     def list_open_issues(self):
         size = 100
         initial = 0
-        issues_list = []
+        issues_dict = {}
         while True:
             start = initial*size
             issues = self.jira.search_issues('project=Swetree and assignee = currentUser() and status = "To Do"', start, size)
@@ -96,7 +165,7 @@ class TimeTracker():
             initial += 1
             key = 1
             for issue in issues:
-                d = {"summary": issue.fields.summary,
+                issues_dict[issue.key] = {"summary": issue.fields.summary,
                      "description": issue.fields.description,
                      "extendedProperties": {
                         "private": {
@@ -106,23 +175,27 @@ class TimeTracker():
                     }
 
                 }
+        
 
-                print(json.dumps({"task"+str(key): d}, indent=4))
-                key = key + 1
-        pass
-
-    def run(self):
+    def interactive(self):
         command = None
         while command != "exit":
             command = input(">>> ")
-            if command in self.tasks['tasks']:
+            commands = command.split()
+            if commands[0] in self.tasks['tasks']:
                 self.end()
-                self.start(self.tasks['tasks'][command])
-            if command == "jira":
-                self.update_jira()
+                self.start(self.tasks['tasks'][commands[0]])
+            if commands[0] == "pause":
+                self.end()
+            if commands[0] == "sync":
+                self.update_jira(commands[1:])
+            elif commands[0] == "list":
+                self.list_tasks(self.tasks["tasks"])
+                
+        end()
 
 
 if __name__ == '__main__':
     t = TimeTracker()
-    t.list_open_issues()
-    #t.run()
+    # t.list_open_issues()
+    t.interactive()
