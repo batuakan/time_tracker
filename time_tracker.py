@@ -4,6 +4,7 @@ import json
 import math
 import os.path
 import calendar
+import csv
 
 from jira import JIRA
 from googleapiclient.discovery import build
@@ -89,7 +90,7 @@ class TimeTracker():
 
         timeMin = datetime.combine(begin_date, datetime.min.time()).isoformat()+'Z'
         timeMax = datetime.combine(end_date, datetime.max.time()).isoformat() + 'Z'
-        print(timeMin, timeMax)
+        # print(timeMin, timeMax)
         return (timeMin, timeMax)
 
     def update_jira(self, params=None):
@@ -112,7 +113,7 @@ class TimeTracker():
                     end_datetime = datetime.strptime(event["end"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
                     span = math.ceil((end_datetime - start_datetime).total_seconds() / 60.0)
                     if not "description" in event.keys():
-                         event["description"] = ""
+                         event["description"] = "."
                     worklogs.append({"issue": event["extendedProperties"]["private"]["jira"], "timeSpent": self.td_format(end_datetime - start_datetime), "comment": event["description"], "started": start_datetime})
                 except:
                     pass
@@ -149,8 +150,8 @@ class TimeTracker():
                     span_hours = (end_datetime - start_datetime).total_seconds() / 60.0 / 60.0
                     if not "description" in event.keys():
                          event["description"] = ""
-                    comment = "{} - {}: {} --- {}".format(start_datetime.time(), end_datetime.time(), event["summary"], event["description"])
-                    worklogs.append({"issue": event["extendedProperties"]["private"]["project"], "timeSpent": str(span_hours), "comment": comment, "started": start_datetime.date()})
+                    comment = "{}-{} {} --- {}".format(start_datetime.time().strftime("%H:%M"), end_datetime.time().strftime("%H:%M"), event["summary"], event["description"])
+                    worklogs.append({"issue": event["extendedProperties"]["private"]["project"], "timeSpent": str(span_hours), "comment": comment, "started": start_datetime.date().strftime("%Y-%m-%d")})
                 except:
                     pass
             page_token = events.get('nextPageToken')
@@ -158,8 +159,17 @@ class TimeTracker():
                 break
         if worklogs != []:
             self.list_work_logs(worklogs)
-            # s = console.input(">[bold green]yes>[bold red]no>")
-            # print("The work items have been synched with Jira")
+            s = console.input(">[bold green]yes>[bold red]no>")
+            if s == "yes":
+                with open('map.json') as file:
+                    project_map = json.load(file)                
+                with open('odoo.csv', 'w', newline='') as csvfile:
+                    odoowriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+                    odoowriter.writerow(["id", "timesheet_ids/name", "timesheet_ids/account_id/id", "timesheet_ids/date", "timesheet_ids/unit_amount", "timesheet_ids/journal_id/id"])
+                    for worklog in worklogs:
+                        odoowriter.writerow(["", worklog["comment"], project_map[worklog["issue"]], worklog["started"],  worklog["timeSpent"], "hr_timesheet.analytic_journal"]) 
+
+            print("The work items have been written to oddo.csv file.")
         else:
             print("No work has been logged for the requested day")       
 
