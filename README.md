@@ -45,3 +45,45 @@ JIRA Access
     },
 }
 ```
+
+Setting Up Tasks
+----------------
+
+Insert as many tasks as you want in to the tasks.json file
+
+```json
+{
+    "tasks": {
+        "t1": {
+            "summary": "Some boring task ",
+            "description": "Some very boring task that needs time reporting",
+            "extendedProperties": {
+                "private": {
+                    "jira": "JIRA_Issue-XXX",
+                    "project": "odoo_project_id"                    
+                }
+            }
+        },
+        "t2": {
+            "summary": "Some other boring task ",
+            "description": "Some very boring task that needs time reporting",
+            "extendedProperties": {
+                "private": {
+                    "jira": "JIRA_Issue-XXX",
+                    "project": "odoo_project_id"                    
+                }
+            }
+        },
+        "lunch": {
+            "summary": "Lunch",
+            "location": "Lunch place",
+            "description": "Nothing like a healthy meal to rejuvenate your body and soul :)",
+            "extendedProperties": {
+                "private": {}
+        }
+    }
+
+
+    }
+}
+```
