@@ -61,14 +61,15 @@ class TimeTracker():
             ('m', 60*60*24*30),
             ('d', 60*60*24),
             ('h', 60*60),
-            ('m', 60),
-            ('s', 1)
+            ('m', 60)
         ]
 
         strings=[]
         for period_name, period_seconds in periods:
             if seconds > period_seconds:
-                period_value , seconds = divmod(seconds, period_seconds)
+                period_value, seconds = divmod(seconds, period_seconds)
+                if period_name == "m" and seconds > 0:
+                    period_value = period_value + 1
                 strings.append("%s%s" % (period_value, period_name))
 
         return " ".join(strings)
@@ -107,7 +108,7 @@ class TimeTracker():
             events = self.service.events().list(calendarId=self.google_calendar, timeMin=timeMin, timeMax=timeMax, pageToken=page_token).execute()
 
             for event in events['items']:
-                print(event)
+                # print(event)
                 try:
                     start_datetime = datetime.strptime(event["start"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
                     end_datetime = datetime.strptime(event["end"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
