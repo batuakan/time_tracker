@@ -86,6 +86,10 @@ class TimeTracker():
                 (i, j) = calendar.monthrange(begin_date.year, months.index(params[0]) + 1)
                 begin_date = date(year=begin_date.year, month=months.index(params[0]) + 1, day=i)
                 end_date = date(year=begin_date.year, month=months.index(params[0]) + 1, day=j)
+            elif "week" in params[0]:
+                w = params[0][4:]
+                d = "{}-W{}-1".format(begin_date.year, w)
+                begin_date = datetime.strptime(d, "%Y-W%W-%w")
             else:
                 begin_date = end_date = datetime.strptime(params[0], '%Y%m%d')
 
