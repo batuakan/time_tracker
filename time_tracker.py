@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from json import dumps
 
 from rich.console import Console
@@ -52,6 +52,7 @@ class TimeTracker():
             j = json.load(file)
             self.tasks = j["tasks"]
             self.jira_settings = j["jira"]
+            self.odoo_settings = j["odoo"]
             self.google_calendar = j["calendar"]
 
     def td_format(self, td_object):
@@ -67,49 +68,50 @@ class TimeTracker():
         strings=[]
         for period_name, period_seconds in periods:
             if seconds > period_seconds:
-                period_value, seconds = divmod(seconds, period_seconds)
+                period_value , seconds = divmod(seconds, period_seconds)
                 if period_name == "m" and seconds > 0:
-                    period_value = period_value + 1
+                    period_value = period_value +1
                 strings.append("%s%s" % (period_value, period_name))
-
         return " ".join(strings)
 
     def calculate_time_span(self, params):
-        months = ['jan', 'feb' 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-        begin_date = end_date  = date.today()
-        if len(params) > 0:
+        months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+        begin_date = end_date = date.today()
+        if params and len(params) > 0:
             if params[0] == "today":
                 pass
             elif params[0] == "yesterday":
                 begin_date = end_date = (begin_date + timedelta(days=-1))
             elif params[0] in months:
                 (i, j) = calendar.monthrange(begin_date.year, months.index(params[0]) + 1)
-                begin_date = date(year=begin_date.year, month=months.index(params[0]) + 1, day=i)
+                print(i,j)
+                begin_date = date(year=begin_date.year, month=months.index(params[0]) + 1, day=1)
                 end_date = date(year=begin_date.year, month=months.index(params[0]) + 1, day=j)
             elif "week" in params[0]:
                 w = params[0][4:]
                 d = "{}-W{}-1".format(begin_date.year, w)
                 begin_date = datetime.strptime(d, "%Y-W%W-%w")
+                print(begin_date)
+                end_date = (begin_date + timedelta(days=7) + timedelta(minutes=-1))
+                print(end_date)
             else:
                 begin_date = end_date = datetime.strptime(params[0], '%Y%m%d')
+               
 
-        timeMin = datetime.combine(begin_date, datetime.min.time()).isoformat()+'Z'
-        timeMax = datetime.combine(end_date, datetime.max.time()).isoformat() + 'Z'
-        # print(timeMin, timeMax)
+        timeMin = datetime.combine(begin_date, datetime.min.time())
+        timeMax = datetime.combine(end_date, datetime.max.time())
         return (timeMin, timeMax)
 
     def update_jira(self, params=None):
         page_token = None
         worklogs = []
-        if len(params) > 0:
-            (timeMin, timeMax) = self.calculate_time_span(params)
-        else:
-            (timeMin, timeMax) = self.calculate_time_span(['today'])
+        (timeMin, timeMax) = self.calculate_time_span(params)
 
         # print(timeMin, timeMax)
         
         while True:
-            events = self.service.events().list(calendarId=self.google_calendar, timeMin=timeMin, timeMax=timeMax, pageToken=page_token).execute()
+            events = self.service.events().list(calendarId=self.google_calendar,
+                                                timeMin=timeMin.isoformat()+'Z', timeMax=timeMax.isoformat()+'Z', pageToken=page_token).execute()
 
             for event in events['items']:
                 # print(event)
@@ -134,6 +136,43 @@ class TimeTracker():
                 print("The work items have been synched with Jira")
         else:
             print("No work has been logged for the requested day")
+
+    def jira_delete(self, params=None):
+        worklogs = []
+        worklogs_raw = []
+       
+        (timeMin, timeMax) = self.calculate_time_span(params)
+
+        size = 100
+        initial = 0
+        while True:
+            start = initial*size
+            issues = self.jira.search_issues('project={} and assignee = currentUser()'.format(
+                self.jira_settings["project_name"]), start, size)
+            if len(issues) == 0:
+                break
+            initial += 1
+            key = 1
+            for issue in issues:
+                for worklog in self.jira.worklogs(issue):
+                   
+                    worklog_started = datetime.strptime(
+                       worklog.raw["started"], '%Y-%m-%dT%H:%M:%S.%f%z')
+                    if timeMin.replace(tzinfo=timezone.utc) < worklog_started.replace(tzinfo=timezone.utc) < timeMax.replace(tzinfo=timezone.utc):
+                        worklogs.append(worklog)
+                        d = worklog.raw
+                        d['issue'] = issue.raw['key']
+                        worklogs_raw.append(d)
+        
+        if worklogs_raw != []:
+            self.list_work_logs(worklogs_raw)
+            console.print("JIRA worklogs listed above will be deleted. This action cannot be undone")
+            s = console.input(">[bold green]yes>[bold red]no>")
+            if s == "yes":
+                for worklog in worklogs:
+                    worklog.delete()
+                print("The work items have been deleted")
+
 
     def update_odoo(self, params=None):
         page_token = None
@@ -171,8 +210,11 @@ class TimeTracker():
                 with open('odoo.csv', 'w', newline='') as csvfile:
                     odoowriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
                     odoowriter.writerow(["id", "timesheet_ids/name", "timesheet_ids/account_id/id", "timesheet_ids/date", "timesheet_ids/unit_amount", "timesheet_ids/journal_id/id"])
+                    time_sheet_id = "__export__.hr_timesheet_sheet_sheet_" + str(self.odoo_settings["time_sheet_id"])
                     for worklog in worklogs:
-                        odoowriter.writerow(["", worklog["comment"], project_map[worklog["issue"]], worklog["started"],  worklog["timeSpent"], "hr_timesheet.analytic_journal"]) 
+                        odoowriter.writerow([time_sheet_id, worklog["comment"], project_map[worklog["issue"]], worklog["started"],  worklog["timeSpent"], "hr_timesheet.analytic_journal"]) 
+                        time_sheet_id = ""
+                        
 
             print("The work items have been written to oddo.csv file.")
         else:
@@ -249,7 +291,30 @@ class TimeTracker():
         with open('export.json', 'w') as f:
             json.dump(issues_dict, f)
 
-        
+    def export_entries(self,  params=None):
+        page_token = None
+        entries = []
+        (timeMin, timeMax) = self.calculate_time_span(params)
+        print(timeMin, timeMax)
+        while True:
+            events = self.service.events().list(calendarId=self.google_calendar,
+                                                timeMin=timeMin.isoformat()+'Z', timeMax=timeMax.isoformat()+'Z', pageToken=page_token).execute()
+            for event in events['items']:
+                entries.append(event)
+            page_token = events.get('nextPageToken')
+            if not page_token:
+                break
+        with open('entries.json', 'w') as f:
+            json.dump(entries, f)
+
+    def update_entries(self,  params=None):
+        with open('entries.json') as file:
+            entries = json.load(file)
+            for entry in entries:
+                self.service.events().update(calendarId=self.google_calendar,
+                                             eventId=entry['id'], body=entry).execute()
+
+
 
     def interactive(self):
         command = None
@@ -269,6 +334,12 @@ class TimeTracker():
                 self.list_tasks(self.tasks)
             elif commands[0] == "export":
                 self.export_issues()
+            elif commands[0] == "j_delete":
+                self.jira_delete(commands[1:])
+            elif commands[0] == "g_export":
+                self.export_entries(commands[1:])
+            elif commands[0] == "g_update":
+                self.update_entries(commands[1:])
             elif commands[0] == "reload":
                 self.reload_settings()
         end()
