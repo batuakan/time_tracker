@@ -177,16 +177,12 @@ class TimeTracker():
     def update_odoo(self, params=None):
         page_token = None
         worklogs = []
-        if len(params) > 0:
-            (timeMin, timeMax) = self.calculate_time_span(params)
-        else:
-            (timeMin, timeMax) = self.calculate_time_span(['today'])
-
+        (timeMin, timeMax) = self.calculate_time_span(params)
         while True:
-            events = self.service.events().list(calendarId=self.google_calendar, timeMin=timeMin, timeMax=timeMax, pageToken=page_token).execute()
+            events = self.service.events().list(calendarId=self.google_calendar, timeMin=timeMin.isoformat()+'Z',
+                                                timeMax=timeMax.isoformat()+'Z', pageToken=page_token).execute()
 
             for event in events['items']:
-                # print(event)
                 try:
                     start_datetime = datetime.strptime(event["start"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
                     end_datetime = datetime.strptime(event["end"]["dateTime"][:-6], '%Y-%m-%dT%H:%M:%S')
@@ -204,15 +200,14 @@ class TimeTracker():
         if worklogs != []:
             self.list_work_logs(worklogs)
             s = console.input(">[bold green]yes>[bold red]no>")
-            if s == "yes":
-                with open('map.json') as file:
-                    project_map = json.load(file)                
+            if s == "yes":            
                 with open('odoo.csv', 'w', newline='') as csvfile:
                     odoowriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
                     odoowriter.writerow(["id", "timesheet_ids/name", "timesheet_ids/account_id/id", "timesheet_ids/date", "timesheet_ids/unit_amount", "timesheet_ids/journal_id/id"])
                     time_sheet_id = "__export__.hr_timesheet_sheet_sheet_" + str(self.odoo_settings["time_sheet_id"])
                     for worklog in worklogs:
-                        odoowriter.writerow([time_sheet_id, worklog["comment"], project_map[worklog["issue"]], worklog["started"],  worklog["timeSpent"], "hr_timesheet.analytic_journal"]) 
+                        odoowriter.writerow([time_sheet_id, worklog["comment"], self.odoo_settings["map"][worklog["issue"]],
+                                             worklog["started"],  worklog["timeSpent"], "hr_timesheet.analytic_journal"])
                         time_sheet_id = ""
                         
 
