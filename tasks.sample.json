@@ -1,0 +1,29 @@
+{
+    "tasks": {
+        "t1": {
+            "summary": "T1 - Some task that needs to be time reported",
+            "description": "info about t1",
+            "extendedProperties": {
+                "private": {
+                    "jira": "XYZ-1232",
+                    "project": "Project name"
+                }
+            }
+        },
+        "t2": {
+            "summary": "T2 - Some task that needs to be time reported",
+            "description": "info about t2",
+            "extendedProperties": {
+                "private": {
+                    "jira": "XYZ-3421",
+                    "project": "Project name"
+                }
+            }
+        },
+        "lunch": {
+            "summary": "Lunch",
+            "colorId": 3,
+            "description": "Nothing like a healthy meal to rejuvenate your body and soul :)",
+        }
+    }
+}
