@@ -1,0 +1,33 @@
+{
+    "jira": {
+        "server": "https://companyname.atlassian.net",
+        "username": "first.last@companyname.com",
+        "api_key": "qqq111www222eee333rrr",
+        "project": "project name",
+        "export_jql": "project=project_name and assignee = currentUser()",
+        "export_template": {
+            "{{issue.key}}": {
+                "summary": "{{issue.fields.summary}}",
+                "location": "North pole",
+                "description": "{{issue.fields.description}}",
+                "extendedProperties": {                    
+                    "private": {
+                        "jira": "{{issue.key}}",
+                        "project": "project"
+                    }
+                }
+            }
+        }
+    },
+    "odoo":{
+        "time_sheet_id": "__export__.hr_timesheet_sheet_sheet_1150",
+        "map": {
+            "project1": "112",
+            "project2": "111"
+        }
+    },
+    "google":{
+        "calendar_id": "xxxyyyzzz@group.calendar.google.com",
+        "timezone": "Europe/Stockholm"
+    }
+}
