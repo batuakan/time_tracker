@@ -1,29 +1,42 @@
 Setup
 =====
 
+Copy the latest version
+
+```console
+git clone https://github.com/batuakan/time_tracker.git
+```
+
+Create a virtual environmnt to ensure smooth operation and activate it.
+
+```console
+python3 -m venv venv
+```
+
 The following packages are required to run time_tracker, please install them using pip.
 
-pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
-pip install --upgrade jira
-pip install --upgrade rich
+```console
+pip install -r requirements.txt
+```
 
 Configuration
 =============
 
+A sample settings.json file and a sample tasks.json file is provided. Copy settings.sample.json to settings.json and copy tasks.sample.json to tasks.json.
 
 Google Calendar
 ---------------
 
-1.  Follow the instruction using the link below to allow access to google calendar API, download and copy the creditentials.json file into the main directory of the project. 
+1. Follow the instruction using the link below to allow access to google calendar API, download and copy the creditentials.json file into the main directory of the project. 
 
 https://developers.google.com/calendar/quickstart/python
 
 2. Go to https://calendar.google.com/ and click settings
-3. SElect the calendar you wnt to expose to time tracker and copy the calendar_id and paste into tasks.json file
+3. Select the calendar you wnt to expose to time tracker and copy the calendar_id and paste into settings.json file
 
 ```json
 {
-    "calendar": "fmmeamr8vlrrd07l774bjvsq48@group.calendar.google.com",
+    "calendar": "xxyyzz11223344@group.calendar.google.com",
 }
 ```
 
@@ -33,7 +46,7 @@ JIRA Access
 1. Login to jira using your companies account link. Usually company_name.atlassian.net.
 2. Go to Account settings / Security / create and manage API tokens
 3. Click create API token and give your API token a name e.g. time_tracker. No need to say keep your API token secret
-4. Fill in your Jira settings in the task.json file
+4. Fill in your Jira settings in the settings.json file
     
 ```json
 {
