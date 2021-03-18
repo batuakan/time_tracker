@@ -49,9 +49,9 @@ class TimeTracker():
         while command != "exit":
             command = console.input(">>> ")
             commands = command.split()
-            elif commands[0] == "help":
+            if commands[0] == "help":
                 self.help()
-            if commands[0] in self.tasks:
+            elif commands[0] in self.tasks:
                 self.calendar.end()
                 self.calendar.start(self.tasks[commands[0]])
             elif commands[0] == "pause":
