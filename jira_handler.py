@@ -68,8 +68,7 @@ class JiraHandler():
         initial = 0
         while True:
             start = initial*size
-            issues = self.jira.search_issues('project={} and assignee = currentUser()'.format(
-                self.settings["project"]), start, size)
+            issues = self.jira.search_issues(self.settings['delete_jql'], start, size)
             if len(issues) == 0:
                 break
             initial += 1
@@ -100,7 +99,7 @@ class JiraHandler():
         issues_dict = {}
         while True:
             start = initial*size
-            issues = self.jira.search_issues('project={} and assignee = currentUser()'.format(self.settings["project"]), start, size)
+            issues = self.jira.search_issues(self.settings['export_jql'], start, size)
             if len(issues) == 0:
                 break
             initial += 1
