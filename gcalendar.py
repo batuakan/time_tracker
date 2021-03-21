@@ -51,14 +51,13 @@ class GCalendar():
                 'dateTime': datetime.now().isoformat(),
                 'timeZone': 'Europe/Stockholm',
             }
-            print(self.entry)
+            # print(self.entry)
             self.update(self.entry)
             self.entry = None
 
     def fetch(self, *args):
         page_token = None
         timeMin, timeMax = calculate_time_span(*args)
-        events = []
         while True:
             page_events = self.service.events().list(calendarId=self.settings["calendar_id"], timeMin=timeMin.isoformat()+'Z', 
                           timeMax=timeMax.isoformat()+'Z', pageToken=page_token).execute()
