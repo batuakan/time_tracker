@@ -31,10 +31,7 @@ class JiraHandler():
         worklogs = []
         for event in events:
             try:
-                start_datetime = dateutil.parser.isoparse(
-                                    event["start"]["dateTime"])
-                end_datetime = dateutil.parser.isoparse(
-                                    event["end"]["dateTime"])
+                start_datetime, end_datetime = get_start_end(event)
                 worklog = {
                     "issue": event["extendedProperties"]["private"]["jira"],
                     "timeSpent": td_format(end_datetime - start_datetime),
@@ -80,7 +77,6 @@ class JiraHandler():
                         worklogs.append(worklog)
                         d = worklog.raw
                         d['issue'] = issue.raw['key']
-                        print(d)
                         worklogs_raw.append(d)
 
         if worklogs_raw != []:

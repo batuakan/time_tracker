@@ -3,11 +3,7 @@ import csv
 
 import dateutil.parser
 from datetime import datetime, date, timedelta, timezone
-
 from tracker_utils import *
-
-
-
 
 class OdooHandler():
     def __init__(self, settings):
@@ -21,16 +17,13 @@ class OdooHandler():
         worklogs = []
         for event in events:
             try:
-                start_datetime = dateutil.parser.isoparse(
-                                    event["start"]["dateTime"])
-                end_datetime = dateutil.parser.isoparse(
-                                    event["end"]["dateTime"])
-
-                print(start_datetime, end_datetime)
+                start_datetime, end_datetime = get_start_end(event)
                 span_hours = (end_datetime - start_datetime).total_seconds() / 60.0 / 60.0
                 if not "description" in event.keys():
                     event["description"] = ""
-                comment = "{}-{} {} --- {}".format(start_datetime.time().strftime("%H:%M"), end_datetime.time().strftime("%H:%M"), event["summary"], event["description"])
+                comment = "{}-{} {} --- {}".format(start_datetime.time().strftime("%H:%M"),
+                                                   end_datetime.time().strftime("%H:%M"), 
+                                                   event["summary"], event["description"])
                 worklogs.append({"issue": event["extendedProperties"]["private"]["project"],
                                  "timeSpent": str(span_hours),
                                  "timeSpentHumanReadable": td_format(end_datetime - start_datetime),
