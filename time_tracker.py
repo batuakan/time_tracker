@@ -9,11 +9,17 @@ from rich.table import Table
 from rich import print
 
 from gcalendar import GCalendar
+from o365calendar import O365Calendar
 from jira_handler import JiraHandler
 from odoo_handler import OdooHandler
 from tracker_utils import *
 
 console = Console()
+
+task_columns = [{"header": "Key", "field": "key", "style": "cyan", "no_wrap": True},
+                {"header": "Description", "field": "summary", "style": "magenta"},
+                {"header": "Project", "field": "extendedProperties.private.project", "justify": "right", "style": "green"},
+                {"header": "Issue", "field": "extendedProperties.private.jira", "style": "cyan", "no_wrap": True} ]
 
 class TimeTracker():
     def __init__(self):
@@ -21,6 +27,7 @@ class TimeTracker():
         with open('settings.json') as file:
             self.settings = json.load(file)
         self.calendar = GCalendar(self.settings["google"])
+        self.o365 = O365Calendar(self.settings["o365"])
         self.jira = JiraHandler(self.settings["jira"])
         self.odoo = OdooHandler(self.settings["odoo"])
 
@@ -32,35 +39,32 @@ class TimeTracker():
     def help():
         pass
 
-    def list_tasks(self, tasks):
-        table = Table(title="Tasks")
-        table.add_column("Code", style="cyan", no_wrap=True)
-        table.add_column("Summary", style="magenta")
-        table.add_column("Project", style="green")
-        for key in tasks.keys():
-            try:
-                table.add_row(key, tasks[key]["summary"], tasks[key]["extendedProperties"]["private"]["project"])
-            except:
-                pass
-        console.print(table, justify="left")  
-
     def interactive(self):
         command = None
         while command != "exit":
             command = console.input(">>> ")
             commands = command.split()
-            elif commands[0] == "help":
+            if commands[0] == "help":
                 self.help()
-            if commands[0] in self.tasks:
+            elif commands[0] in self.tasks:
                 self.calendar.end()
                 self.calendar.start(self.tasks[commands[0]])
+                self.o365.end()
+                self.o365.start(self.tasks[commands[0]])
             elif commands[0] == "pause":
                 self.calendar.end()
+                self.o365.end()
             elif commands[0] == "list":
-                self.list_tasks(self.tasks)
-            elif commands[0] == "jira":
+                # self.list_tasks(self.tasks)
+                t = self.tasks
+                pretty_print(t, *task_columns)
+            elif commands[0] == "elastic":
                 events = self.calendar.fetch(*commands[1:])
-                self.jira.update(events)
+                elastic(events)
+            elif commands[0] == "jira":
+                self.o365.fetch(*commands[1:])
+                #events = self.calendar.fetch(*commands[1:])
+                #self.jira.update(events)
             elif commands[0] == "odoo":
                 events = self.calendar.fetch(*commands[1:])
                 self.odoo.update(events)
@@ -80,3 +84,4 @@ class TimeTracker():
 if __name__ == '__main__':
     t = TimeTracker()
     t.interactive()
+    # c = O365Calendar()
