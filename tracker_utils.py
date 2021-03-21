@@ -1,5 +1,7 @@
 import copy
 import calendar
+import pytz
+import dateutil.parser
 from datetime import datetime, date, timedelta
 
 from rich.console import Console
@@ -61,6 +63,14 @@ def calculate_time_span(*params):
     timeMax = datetime.combine(end_date, datetime.max.time())
     return timeMin, timeMax
 
+def get_start_end(event):
+    start_datetime = end_datetime = None
+    if "start" in event and "dateTime" in event["start"]:
+        start_datetime = dateutil.parser.isoparse(event["start"]["dateTime"])
+    if "end" in event and "dateTime" in event["end"]:
+        end_datetime = dateutil.parser.isoparse(event["end"]["dateTime"])
+    return start_datetime, end_datetime
+
 def get_value(keys, value, default = ""):
     # print(keys, value)
     keys_list = keys.split(".")
@@ -80,9 +90,77 @@ def pretty_print(data, *columns, **kwargs):
     for c in columns_deepcopy:
         fields.append(c.pop("field", None))
         table.add_column(**c)
-    for d in data:            
-        row = []
-        for f in fields:
-            row.append(str(get_value(f, d)))
-        table.add_row(*row)
+    if type(data) is dict:
+        for key, value in data.items():
+            row = []
+            for field in fields:
+                if field == "key":
+                    row.append(str(key))
+                else:
+                    row.append(str(get_value(field, value)))
+            table.add_row(*row)
+    if type(data) is list:
+        for d in data:            
+            row = []
+            for field in fields:
+                row.append(str(get_value(field, d)))
+            table.add_row(*row)
     console.print(table, justify="left")
+
+def start(event):
+    s, _ = get_start_end(event)
+    return s
+
+
+def group_by_date(events):
+    group = {}
+    for event in events:
+        s, _ = get_start_end(event)
+        if s is None:
+            continue
+        s = s.date()
+        if s not in group:
+            group[s] = []
+        group[s].append(event)
+    return group
+
+def ceil_dt(dt, delta):
+    dt_min = datetime.min
+    dt_min = dt_min.replace(tzinfo=pytz.UTC)
+    diff = (dt_min - dt) % delta
+    return dt + diff, diff.total_seconds() * -1
+
+
+def floor_dt(dt, delta):
+    dt_min = datetime.min
+    dt_min = dt_min.replace(tzinfo=pytz.UTC)
+    diff = (dt - dt_min) % delta
+    return dt - diff, diff.total_seconds()
+
+def round_dt(dt, delta):
+    ceil, c_diff = ceil_dt(dt, delta)
+    floor, f_diff = floor_dt(dt, delta)
+    if abs(c_diff) < abs(f_diff):
+        return ceil, c_diff
+    return floor, f_diff
+    
+
+def elastic(events, **kwargs):
+    s = None
+    columns =  [{"header": "Start", "field": "start.dateTime", "style": "cyan", "no_wrap": True},
+                {"header": "End", "field": "end.dateTime", "style": "magenta", "no_wrap": True},
+                {"header": "Summary", "field": "summary", "style": "green"}]
+
+    group = group_by_date(events)
+    for k, v in group.items():
+        group[k] = sorted(v, key=start)
+       
+    for k, v in group.items():
+        # pretty_print(v, *columns)
+        for e in v:
+            s, _ = get_start_end(e)
+            print(str(s))
+            new_s, diff = round_dt(s, timedelta(minutes=15))
+            print(str(new_s), diff)
+            e["start"]["dateTime"] = new_s.isoformat()
+        pretty_print(v, *columns)
