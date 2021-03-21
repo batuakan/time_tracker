@@ -29,5 +29,10 @@
     "google":{
         "calendar_id": "xxxyyyzzz@group.calendar.google.com",
         "timezone": "Europe/Stockholm"
+    },
+    "o365": {
+        "calendar": "worklog",
+        "client_id": "client_id",
+        "client_secret": "client_secret"
     }
 }
