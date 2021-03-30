@@ -1,13 +1,13 @@
-import json
-import csv
+import erppeek
 
-import dateutil.parser
-from datetime import datetime, date, timedelta, timezone
 from tracker_utils import *
 
 class OdooHandler():
     def __init__(self, settings):
         self.settings = settings
+        self.odoo_client = erppeek.Client(
+            self.settings["url"], db=self.settings["db"], user=self.settings["username"], password=self.settings["password"])
+        self.model = self.odoo_client.model('hr.analytic.timesheet')
         self.worklog_columns = [{"header": "Project", "field": "issue", "style": "cyan", "no_wrap": True},
                                 {"header": "Date", "field": "started", "style": "green"},
                                 {"header": "Comment", "field": "comment", "style": "magenta"},
@@ -35,13 +35,16 @@ class OdooHandler():
         if worklogs != []:
             pretty_print(worklogs, *self.worklog_columns)
             s = console.input(">[bold green]yes>[bold red]no>")
-            if s == "yes":               
-                with open('odoo.csv', 'w', newline='') as csvfile:
-                    odoowriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
-                    odoowriter.writerow(["id", "timesheet_ids/name", "timesheet_ids/account_id/id", "timesheet_ids/date", "timesheet_ids/unit_amount", "timesheet_ids/journal_id/id"])
-                    for worklog in worklogs:
-                        odoowriter.writerow(["", worklog["comment"], self.settings["map"][worklog["issue"]], worklog["started"],  worklog["timeSpent"], "hr_timesheet.analytic_journal"]) 
-
-                print("The work items have been written to odoo.csv file.")
+            if s == "yes":      
+                for worklog in worklogs:
+                    data = {
+                        "account_id": self.settings["map"][worklog["issue"]],
+                        "journal_id": self.settings["journal_id"],
+                        "unit_amount": worklog["timeSpent"],
+                        "date": worklog["started"],
+                        "sheet_id": self.settings["time_sheet_id"],
+                        "name": worklog["comment"]
+                    }
+                    self.model.create(data)
         else:
             print("No work has been logged for the requested day")    
