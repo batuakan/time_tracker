@@ -27,7 +27,7 @@ class TimeTracker():
         with open('settings.json') as file:
             self.settings = json.load(file)
         self.calendar = GCalendar(self.settings["google"])
-        self.o365 = O365Calendar(self.settings["o365"])
+        # self.o365 = O365Calendar(self.settings["o365"])
         self.jira = JiraHandler(self.settings["jira"])
         self.odoo = OdooHandler(self.settings["odoo"])
 
@@ -49,22 +49,22 @@ class TimeTracker():
             elif commands[0] in self.tasks:
                 self.calendar.end()
                 self.calendar.start(self.tasks[commands[0]])
-                self.o365.end()
-                self.o365.start(self.tasks[commands[0]])
+                # self.o365.end()
+                # self.o365.start(self.tasks[commands[0]])
             elif commands[0] == "pause":
                 self.calendar.end()
-                self.o365.end()
+                # self.o365.end()
             elif commands[0] == "list":
                 # self.list_tasks(self.tasks)
                 t = self.tasks
                 pretty_print(t, *task_columns)
-            elif commands[0] == "elastic":
+            elif commands[0] == "sloppy":
                 events = self.calendar.fetch(*commands[1:])
-                elastic(events)
+                sloppy(events)
             elif commands[0] == "jira":
-                self.o365.fetch(*commands[1:])
-                #events = self.calendar.fetch(*commands[1:])
-                #self.jira.update(events)
+                # self.o365.fetch(*commands[1:])
+                events = self.calendar.fetch(*commands[1:])
+                self.jira.update(events)
             elif commands[0] == "odoo":
                 events = self.calendar.fetch(*commands[1:])
                 self.odoo.update(events)
@@ -84,4 +84,3 @@ class TimeTracker():
 if __name__ == '__main__':
     t = TimeTracker()
     t.interactive()
-    # c = O365Calendar()
