@@ -1,3 +1,6 @@
 __pycache__
 .vscode
 venv
+tokens
+tasks.json
+settings.json

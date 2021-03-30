@@ -16,8 +16,8 @@ class GCalendar():
         self.settings = settings
         creds = None
         SCOPES = ['https://www.googleapis.com/auth/calendar']
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
+        if os.path.exists('tokens/token.pickle'):
+            with open('tokens/token.pickle', 'rb') as token:
                 creds = pickle.load(token)
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
@@ -25,10 +25,10 @@ class GCalendar():
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
+                    'tokens/credentials.json', SCOPES)
                 creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
-            with open('token.pickle', 'wb') as token:
+            with open('tokens/token.pickle', 'wb') as token:
                 pickle.dump(creds, token)
         self.service = build('calendar', 'v3', credentials=creds)
         self.entry = None
