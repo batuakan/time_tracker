@@ -20,10 +20,15 @@
         }
     },
     "odoo":{
-        "time_sheet_id": "__export__.hr_timesheet_sheet_sheet_1150",
+        "url": "http://company_odoo:8069",
+        "db": "db_name",
+        "username": "usernmae",
+        "password": "password",
+        "time_sheet_id": 1234,
+        "journal_id": 1,
         "map": {
-            "project1": "112",
-            "project2": "111"
+            "project1": "11",
+            "project2": "22"
         }
     },
     "google":{

@@ -5,3 +5,4 @@ jira
 rich
 python-dateutil
 jinja2
+erppeek
