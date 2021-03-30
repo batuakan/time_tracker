@@ -2,7 +2,7 @@ import copy
 import calendar
 import pytz
 import dateutil.parser
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 
 from rich.console import Console
 from rich.table import Table
@@ -124,6 +124,16 @@ def group_by_date(events):
         group[s].append(event)
     return group
 
+
+def group_by_field(events, field):
+    group = {}
+    for event in events:
+        v = get_value(field, event)
+        if v not in group:
+            group[v] = []
+        group[v].append(event)
+    return group
+
 def ceil_dt(dt, delta):
     dt_min = datetime.min
     dt_min = dt_min.replace(tzinfo=pytz.UTC)
@@ -145,6 +155,27 @@ def round_dt(dt, delta):
     return floor, f_diff
     
 
+def merge(events, **kwargs):
+    if len(events) == 0:
+        return None
+    merged_event = events[0]
+    duration_in_seconds = 0
+    for event in events:
+        s, e = get_start_end(event)
+        duration_in_seconds = duration_in_seconds + (e - s).total_seconds()
+    s, e = get_start_end(merged_event)
+    s = get_value("start", kwargs, s)
+    e = s + timedelta(seconds=duration_in_seconds)
+    if get_value("extendedProperties.private.jira", merged_event, None) is not None:
+        e, _ = ceil_dt(e, timedelta(minutes=15))
+
+    merged_event["start"]["dateTime"] = s.isoformat()
+    merged_event["end"]["dateTime"] = e.isoformat()
+    return merged_event
+
+def exact(events, **kwargs):
+    return events
+
 def elastic(events, **kwargs):
     s = None
     columns =  [{"header": "Start", "field": "start.dateTime", "style": "cyan", "no_wrap": True},
@@ -164,3 +195,15 @@ def elastic(events, **kwargs):
             print(str(new_s), diff)
             e["start"]["dateTime"] = new_s.isoformat()
         pretty_print(v, *columns)
+
+def sloppy(events, **kwargs):
+    s = None
+    columns = [{"header": "Start", "field": "start.dateTime", "style": "cyan", "no_wrap": True},
+               {"header": "End", "field": "end.dateTime", "style": "magenta", "no_wrap": True},
+               {"header": "Summary", "field": "summary", "style": "green"}]
+
+    group = group_by_field(events, "extendedProperties.private.jira")
+    for k, v in group.items():
+        merged_event = merge(v)
+        pretty_print([merged_event], *columns)
+        
