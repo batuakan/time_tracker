@@ -18,7 +18,7 @@ class JiraHandler():
         self.settings = settings
         # print(settings)
         options = {"server": self.settings["server"]}
-        self.jira = JIRA(options, basic_auth=(self.settings["username"], self.settings["api_key"]))
+        self.jira = JIRA(options=options, basic_auth=(self.settings["username"], self.settings["api_key"]))
         self.worklog_columns = [{"header": "Issue", "field":"issue", "style": "cyan", "no_wrap": True},
                                 {"header": "Started", "field": "started", "style": "green"},
                                 {"header": "Comment", "field": "comment", "style": "magenta"},
@@ -78,7 +78,6 @@ class JiraHandler():
                         d = worklog.raw
                         d['issue'] = issue.raw['key']
                         worklogs_raw.append(d)
-
         if worklogs_raw != []:
             pretty_print(worklogs_raw, *self.worklog_columns)
             console.print("JIRA worklogs listed above will be deleted. This action cannot be undone")
@@ -101,9 +100,13 @@ class JiraHandler():
             initial += 1
             key = 1
             for issue in issues:
-                # s = self.export_template.render(issue = issue)
-                # print(s)
+                # s = self.export_template.render(issue = issue)      
+                # s = s.replace('"', '\\"')
+                # s = s.replace('\n', '\\n')
+                # s = s.replace('\r', '\\r')
+                # print (s)
                 # j = json.loads(s)
+                # print(j)
                 issues_dict[issue.key] = {"summary": issue.fields.summary,
                      "description": issue.fields.description,
                      "extendedProperties": {
@@ -114,4 +117,4 @@ class JiraHandler():
                     }
                 }
         with open('jira_export.json', 'w') as f:
-            json.dump(issues_dict, f)
+            json.dump(issues_dict, f, sort_keys=True, indent=4)
