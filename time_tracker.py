@@ -78,6 +78,9 @@ class TimeTracker():
                 self.calendar.update_entries(*commands[1:])
             elif commands[0] == "reload":
                 self.reload_settings()
+            elif commands[0] == "report":
+                events = self.calendar.fetch(*commands[1:])
+                report(events)
         self.calendar.end()
 
 

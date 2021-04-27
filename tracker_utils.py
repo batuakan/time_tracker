@@ -1,5 +1,6 @@
 import copy
 import calendar
+from re import S
 import pytz
 import dateutil.parser
 from datetime import datetime, date, timedelta, time
@@ -84,7 +85,10 @@ def get_value(keys, value, default = ""):
         v = v[key]
 
 def pretty_print(data, *columns, **kwargs):
-    table = Table(title="Tasks")
+    title = "Tasks"
+    if "title" in kwargs:
+        title= kwargs["title"]
+    table = Table(title=title)
     fields = []
     columns_deepcopy = copy.deepcopy(columns)
     for c in columns_deepcopy:
@@ -207,3 +211,24 @@ def sloppy(events, **kwargs):
         merged_event = merge(v)
         pretty_print([merged_event], *columns)
         
+def report(events):
+    group = group_by_date(events)
+    columns = [{"header": "Start", "field": "start.time", "style": "cyan", "no_wrap": True},
+               {"header": "Project", "field": "extendedProperties.private.project",
+                   "style": "cyan", "no_wrap": True},
+               {"header": "Issue", "field": "extendedProperties.private.jira",
+                   "style": "cyan", "no_wrap": True},
+               {"header": "Time", "field": "spenttime", "style": "green"},
+               {"header": "Summary", "field": "summary", "style": "green"},
+               {"header": "Description", "field": "description", "style": "green"}]
+    summary = {}
+    for k, v in group.items():
+        group[k] = sorted(v, key=start)
+
+        for e in group[k]:
+            s, end = get_start_end(e)
+            e["start"]["time"] = s.time()
+            e["spenttime"] = td_format(end - s)
+
+        pretty_print(group[k], *columns, title=str(k))
+    pass
