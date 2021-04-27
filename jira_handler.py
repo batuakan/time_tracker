@@ -10,8 +10,6 @@ from jira import JIRA
 from tracker_utils import *
 
 from jinja2 import Template
-# >> > t = Template("Hello {{ something }}!")
-# >> > t.render(something="World")
 
 class JiraHandler():
     def __init__(self, settings):
