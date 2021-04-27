@@ -5,15 +5,16 @@ from tracker_utils import *
 class OdooHandler():
     def __init__(self, settings):
         self.settings = settings
-        self.odoo_client = erppeek.Client(
-            self.settings["url"], db=self.settings["db"], user=self.settings["username"], password=self.settings["password"])
-        self.model = self.odoo_client.model('hr.analytic.timesheet')
         self.worklog_columns = [{"header": "Project", "field": "issue", "style": "cyan", "no_wrap": True},
                                 {"header": "Date", "field": "started", "style": "green"},
                                 {"header": "Comment", "field": "comment", "style": "magenta"},
                                 {"header": "Time Spent", "field": "timeSpentHumanReadable", "justify": "right", "style": "green"}]
 
     def update(self, events):
+        self.odoo_client = erppeek.Client(
+            self.settings["url"], db=self.settings["db"], user=self.settings["username"], password=self.settings["password"])
+        self.model = self.odoo_client.model('hr.analytic.timesheet')
+
         worklogs = []
         for event in events:
             try:
