@@ -221,7 +221,12 @@ def report(events):
                {"header": "Time", "field": "spenttime", "style": "green"},
                {"header": "Summary", "field": "summary", "style": "green"},
                {"header": "Description", "field": "description", "style": "green"}]
-    summary = {}
+
+    summary_columns = [
+        {"header": "Date", "field": "date", "style": "cyan", "no_wrap": True}, 
+        {"header": "Hours worked", "field": "time_spent", "style": "green"},
+        {"header": "Overwork", "field": "overworked", "style": "red"}]
+
     for k, v in group.items():
         group[k] = sorted(v, key=start)
 
@@ -231,4 +236,22 @@ def report(events):
             e["spenttime"] = td_format(end - s)
 
         pretty_print(group[k], *columns, title=str(k))
+
+    summary = []
+    for k, v in group.items():
+        ts = 0
+        for e in v:
+            if get_value("extendedProperties.private.project", e, None) == None and get_value("extendedProperties.private.jira", e, None) == None:
+                continue
+            s, end = get_start_end(e)    
+            ts = ts + (end - s).total_seconds()
+        summary.append(
+            {
+                "date": k,
+                "time_spent": td_format(timedelta(seconds=ts)),
+                "overworked": td_format(timedelta(seconds=ts) - timedelta(hours=8))
+            }
+        )
+
+    pretty_print(summary, *summary_columns, title="Summary")
     pass
