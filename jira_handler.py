@@ -58,24 +58,14 @@ class JiraHandler():
         worklogs_raw = []
 
         (timeMin, timeMax) = calculate_time_span(*args)
-
-        size = 100
-        initial = 0
-        while True:
-            start = initial*size
-            issues = self.jira.search_issues(self.settings['delete_jql'], start, size)
-            if len(issues) == 0:
-                break
-            initial += 1
-            key = 1
-            for issue in issues:
-                for worklog in self.jira.worklogs(issue):
-                    worklog_started = dateutil.parser.isoparse(worklog.raw["started"])
-                    if timeMin.replace(tzinfo=timezone.utc) < worklog_started.replace(tzinfo=timezone.utc) < timeMax.replace(tzinfo=timezone.utc):
-                        worklogs.append(worklog)
-                        d = worklog.raw
-                        d['issue'] = issue.raw['key']
-                        worklogs_raw.append(d)
+        for issue in self.find_issues(self.settings['delete_jql']):
+            for worklog in self.jira.worklogs(issue):
+                worklog_started = dateutil.parser.isoparse(worklog.raw["started"])
+                if timeMin.replace(tzinfo=timezone.utc) < worklog_started.replace(tzinfo=timezone.utc) < timeMax.replace(tzinfo=timezone.utc):
+                    worklogs.append(worklog)
+                    d = worklog.raw
+                    d['issue'] = issue.raw['key']
+                    worklogs_raw.append(d)
         if worklogs_raw != []:
             pretty_print(worklogs_raw, *self.worklog_columns)
             console.print("JIRA worklogs listed above will be deleted. This action cannot be undone")
@@ -87,32 +77,60 @@ class JiraHandler():
 
 
     def export_issues(self):
+        issues_dict = {}
+        for issue in self.find_issues(self.settings['export_jql']):
+            issues_dict[issue.key] = {"summary": issue.fields.summary,
+                    "description": issue.fields.description,
+                    "extendedProperties": {
+                    "private": {
+                        "jira": issue.key,
+                        "project": self.project_from_issue(issue.key)
+                    }
+                }
+            }
+        with open('jira_export.json', 'w') as f:
+            json.dump(issues_dict, f, sort_keys=True, indent=4)
+
+    def find_issues(self, jql = ""):
         size = 100
         initial = 0
         issues_dict = {}
         while True:
             start = initial*size
-            issues = self.jira.search_issues(self.settings['export_jql'], start, size)
+            issues = self.jira.search_issues(jql, start, size)
             if len(issues) == 0:
                 break
             initial += 1
             key = 1
             for issue in issues:
-                # s = self.export_template.render(issue = issue)      
-                # s = s.replace('"', '\\"')
-                # s = s.replace('\n', '\\n')
-                # s = s.replace('\r', '\\r')
-                # print (s)
-                # j = json.loads(s)
-                # print(j)
-                issues_dict[issue.key] = {"summary": issue.fields.summary,
-                     "description": issue.fields.description,
-                     "extendedProperties": {
-                        "private": {
-                            "jira": issue.key,
-                            "project": "P4-18-4"
-                            }
-                    }
-                }
-        with open('jira_export.json', 'w') as f:
-            json.dump(issues_dict, f, sort_keys=True, indent=4)
+                yield issue
+                
+    def project_from_issue(self, issue):
+        best_match = ""
+        best_score = 0
+        for k,v in self.settings['odoo_map'].items():
+            
+            ma = re.search(str(k), issue)
+            if ma:
+                min, max = ma.span()
+                if max - min > best_score:
+                    best_score = max - min
+                    best_match = v
+        return best_match
+
+    def event_from_issue(self, issue_str):
+
+        event = None
+        for issue in self.find_issues('issueKey = {}'.format(issue_str)):
+            event = {"summary": issue.fields.summary,
+             "description": issue.fields.description,
+             "extendedProperties": {
+                 "private": {
+                     "jira": issue.key,
+                     "project": self.project_from_issue(issue.key)
+                 }
+             }
+             }
+            if get_value("extendedProperties.private.project", event) == "":
+                event['extendedProperties']['private'].pop('project', None)
+        return event

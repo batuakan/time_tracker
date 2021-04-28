@@ -5,6 +5,10 @@
         "api_key": "qqq111www222eee333rrr",
         "project": "project name",
         "export_jql": "project=project_name and assignee = currentUser()",
+        "odoo_map": {
+            "PROJ-123": "project1",
+            "PROC-...": "project2"
+        },
         "export_template": {
             "{{issue.key}}": {
                 "summary": "{{issue.fields.summary}}",

@@ -31,6 +31,8 @@ class TimeTracker():
         self.jira = JiraHandler(self.settings["jira"])
         self.odoo = OdooHandler(self.settings["odoo"])
 
+        # self.jira.event_from_issue("PER-123")
+
     def reload_settings(self):
         with open('tasks.json') as file:
             j = json.load(file)
@@ -81,6 +83,11 @@ class TimeTracker():
             elif commands[0] == "report":
                 events = self.calendar.fetch(*commands[1:])
                 report(events)
+            else:
+                e = self.jira.event_from_issue(commands[0])
+                if e:
+                    self.calendar.end()
+                    self.calendar.start(e)
         self.calendar.end()
 
 
