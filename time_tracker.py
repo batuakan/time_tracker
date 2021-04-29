@@ -9,7 +9,7 @@ from rich.table import Table
 from rich import print
 
 from gcalendar import GCalendar
-from o365calendar import O365Calendar
+# from o365calendar import O365Calendar
 from jira_handler import JiraHandler
 from odoo_handler import OdooHandler
 from tracker_utils import *
@@ -38,7 +38,7 @@ class TimeTracker():
             j = json.load(file)
             self.tasks = j["tasks"]
 
-    def help():
+    def help(self):
         pass
 
     def interactive(self):
@@ -46,11 +46,12 @@ class TimeTracker():
         while command != "exit":
             command = console.input(">>> ")
             commands = command.split()
+            entry = get_value(commands[0], self.tasks, None)
             if commands[0] == "help":
                 self.help()
-            elif commands[0] in self.tasks:
+            elif entry is not None:# commands[0] in self.tasks:
                 self.calendar.end()
-                self.calendar.start(self.tasks[commands[0]])
+                self.calendar.start(entry)
                 # self.o365.end()
                 # self.o365.start(self.tasks[commands[0]])
             elif commands[0] == "pause":
@@ -59,7 +60,7 @@ class TimeTracker():
             elif commands[0] == "list":
                 # self.list_tasks(self.tasks)
                 t = self.tasks
-                pretty_print(t, *task_columns)
+                pretty_print(self.tasks, *task_columns)
             elif commands[0] == "sloppy":
                 events = self.calendar.fetch(*commands[1:])
                 sloppy(events)

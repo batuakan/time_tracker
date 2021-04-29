@@ -2,12 +2,14 @@
 from __future__ import print_function
 import pickle
 import json
+
 import os.path
 
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
+from time import sleep
 from datetime import datetime, date, timedelta
 from tracker_utils import *
 
@@ -71,7 +73,8 @@ class GCalendar():
     def export_entries(self,  *args):
         entries = []
         for event in self.fetch(*args):
-            entries.append(event)
+            if "Lunch" not in event["summary"] and "extendedProperties" not in event:
+                entries.append(event)
         with open('entries.json', 'w') as f:
             json.dump(entries, f)
 
@@ -84,11 +87,9 @@ class GCalendar():
                 for entry in entries:
                     self.update(entry)
                     count = count + 1
-                    print(count)
-                    if  count % 2 == 0:
-                        time.sleep(1)
-            except:
-                print("Error {}".format(count))
+                    sleep(1)
+            except Exception as e:
+                print("Error {}".format(e))
 
     def insert(self, event):
         return self.service.events().insert(calendarId=self.settings["calendar_id"], body=event).execute()

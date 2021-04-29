@@ -49,3 +49,5 @@ class OdooHandler():
                     self.model.create(data)
         else:
             print("No work has been logged for the requested day")    
+
+#model('project.project').browse(['name like P4']).read([ 'analytic_account_id' , 'name'])
