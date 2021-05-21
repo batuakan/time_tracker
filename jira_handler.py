@@ -58,14 +58,24 @@ class JiraHandler():
         worklogs_raw = []
 
         (timeMin, timeMax) = calculate_time_span(*args)
-        for issue in self.find_issues(self.settings['delete_jql']):
-            for worklog in self.jira.worklogs(issue):
-                worklog_started = dateutil.parser.isoparse(worklog.raw["started"])
-                if timeMin.replace(tzinfo=timezone.utc) < worklog_started.replace(tzinfo=timezone.utc) < timeMax.replace(tzinfo=timezone.utc):
-                    worklogs.append(worklog)
-                    d = worklog.raw
-                    d['issue'] = issue.raw['key']
-                    worklogs_raw.append(d)
+
+        size = 100
+        initial = 0
+        while True:
+            start = initial*size
+            issues = self.jira.search_issues(self.settings['delete_jql'], start, size)
+            if len(issues) == 0:
+                break
+            initial += 1
+            key = 1
+            for issue in issues:
+                for worklog in self.jira.worklogs(issue):
+                    worklog_started = dateutil.parser.isoparse(worklog.raw["started"])
+                    if timeMin.replace(tzinfo=timezone.utc) < worklog_started.replace(tzinfo=timezone.utc) < timeMax.replace(tzinfo=timezone.utc) and worklog.raw['author']['emailAddress'] == self.settings['username']:
+                        worklogs.append(worklog)
+                        d = worklog.raw
+                        d['issue'] = issue.raw['key']
+                        worklogs_raw.append(d)
         if worklogs_raw != []:
             pretty_print(worklogs_raw, *self.worklog_columns)
             console.print("JIRA worklogs listed above will be deleted. This action cannot be undone")
