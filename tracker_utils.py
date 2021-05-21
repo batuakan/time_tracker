@@ -238,6 +238,7 @@ def report(events):
         pretty_print(group[k], *columns, title=str(k))
 
     summary = []
+    total_seconds = 0
     for k, v in group.items():
         ts = 0
         for e in v:
@@ -245,6 +246,7 @@ def report(events):
                 continue
             s, end = get_start_end(e)    
             ts = ts + (end - s).total_seconds()
+        total_seconds = total_seconds + ts
         summary.append(
             {
                 "date": k,
@@ -254,4 +256,7 @@ def report(events):
         )
 
     pretty_print(summary, *summary_columns, title="Summary")
+
+    print("Total hours worked: {}".format(
+        timedelta(seconds=total_seconds).total_seconds() / 3600  ))
     pass
