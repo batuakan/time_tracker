@@ -9,8 +9,8 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from time import sleep
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
+import time as t
 from tracker_utils import *
 
 class GCalendar():
@@ -87,7 +87,8 @@ class GCalendar():
                 for entry in entries:
                     self.update(entry)
                     count = count + 1
-                    sleep(1)
+                    print(count)
+                    t.sleep(1)
             except Exception as e:
                 print("Error {}".format(e))
 
