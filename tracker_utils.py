@@ -12,7 +12,11 @@ from rich import print
 console = Console()
 
 def td_format(td_object):
+    negative = False
     seconds = int(td_object.total_seconds())
+    if seconds < 0:
+        seconds = abs(seconds)
+        negative = True
     if seconds < 60:
         seconds = 60
     periods = [
@@ -30,8 +34,10 @@ def td_format(td_object):
             if period_name == 'm' and seconds > 0:
                 period_value = period_value + 1
             strings.append("%s%s" % (period_value, period_name))
-
-    return " ".join(strings)
+    s = " ".join(strings)
+    if negative == True:
+        s = "-" + s
+    return s
 
 def calculate_time_span(*params):
     months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
@@ -57,6 +63,12 @@ def calculate_time_span(*params):
         elif "all" in params[0]:
             begin_date = begin_date - timedelta(days=365 * 100)
             end_date = begin_date + timedelta(days=365 * 100)
+        elif len(params[0]) == 4:
+            print("year")
+            begin_date = date(year=int(params[0]),
+                              month=1, day=1)
+            end_date = date(year=int(params[0]),
+                            month=12, day=31)
             
         else:
             begin_date = end_date = datetime.strptime(params[0], '%Y%m%d')
@@ -257,6 +269,13 @@ def report(events):
 
     pretty_print(summary, *summary_columns, title="Summary")
 
-    print("Total hours worked: {}".format(
-        timedelta(seconds=total_seconds).total_seconds() / 3600  ))
+    
+    days = len(summary)
+    hours = timedelta(seconds=total_seconds).total_seconds() / 3600
+    overworked = td_format(timedelta(hours=hours - days * 8))
+    print("Number of days worked: {}".format(days))
+    print("Total hours worked: {}".format( hours) )
+    print("[bold red]Overworked: {}".format(overworked))
+
+    
     pass
