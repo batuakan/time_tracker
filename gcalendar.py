@@ -73,8 +73,8 @@ class GCalendar():
     def export_entries(self,  *args):
         entries = []
         for event in self.fetch(*args):
-            if "Lunch" not in event["summary"] and "extendedProperties" not in event:
-                entries.append(event)
+            # if "Lunch" not in event["summary"] and "extendedProperties" not in event:
+            entries.append(event)
         with open('entries.json', 'w') as f:
             json.dump(entries, f)
 
