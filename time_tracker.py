@@ -37,6 +37,20 @@ class TimeTracker():
         with open('tasks.json') as file:
             j = json.load(file)
             self.tasks = j["tasks"]
+    
+    def default(self,  *args):
+        timeMin, timeMax = calculate_time_span(*args)
+        for entry in self.settings["default"]:
+            # print(entry)
+            startDate = datetime.fromisoformat(entry["start"]["dateTime"])
+            startDate = startDate.replace(year=timeMin.year, month=timeMin.month, day= timeMin.day)
+            
+            endDate = datetime.fromisoformat(entry["end"]["dateTime"])
+            endDate = endDate.replace(
+                year=timeMax.year, month=timeMax.month, day=timeMax.day)
+            entry["start"]['dateTime'] = startDate.isoformat()
+            entry["end"]['dateTime'] = endDate.isoformat()
+            self.calendar.insert(entry)
 
     def help(self):
         pass
@@ -84,6 +98,8 @@ class TimeTracker():
             elif commands[0] == "report":
                 events = self.calendar.fetch(*commands[1:])
                 report(events)
+            elif commands[0] == "default":
+                self.default(*commands[1:])
             else:
                 e = self.jira.event_from_issue(commands[0])
                 if e:
